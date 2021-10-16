@@ -18,7 +18,7 @@ args={
     # Basic Training Control
     "project_name" : "Breast_PL",
     "batch_size" : 16,
-    "batch_accumulate" : 2,
+    "batch_accumulate" : 1,
     "num_workers" : 4,
     "seed" : 42,
     "lr" : 1e-3,
@@ -103,17 +103,18 @@ def main(args):
         accumulate_grad_batches=args["batch_accumulate"],
         auto_scale_batch_size='binsearch',
         auto_lr_find=False,
-        max_epochs=1,       # 1000
-        min_epochs=1,       # 200
+        max_epochs=1000,       # 1000
+        min_epochs=200,       # 200
         log_every_n_steps=args["batch_size"],
         gpus=1,
-        precision=32,
+        precision=16,       # 32
         logger=wandb,
         callbacks=load_callbacks()
         )
     wandb.watch(model)
     trainer.fit(model, data_module)
     trainer.test(model, data_module)
+
 
 if __name__ == '__main__':
     main(args)
