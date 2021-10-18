@@ -10,7 +10,7 @@ class BreastData(data.Dataset):
     def __init__(self, 
                  data_dir = r'data\histogram_cc', 
                  class_num=2,
-                 train=True,
+                 mode = "train",
                  no_augment=True,
                  aug_prob=0.5,
                  img_mean=(0.485, 0.456, 0.406),
@@ -18,7 +18,10 @@ class BreastData(data.Dataset):
 
         # Set all input args as attributes
         self.__dict__.update(locals())
-        self.aug = train and not no_augment
+        if (mode == "train" and not no_augment) or (mode == "val" and not no_augment):
+            self.aug = True
+        else:
+            self.aug = False
 
         self.check_files()
 
@@ -26,7 +29,7 @@ class BreastData(data.Dataset):
         return len(self.path_list)
     
     def __getitem__(self, idx):
-        img_tensor,labels = self.path_list[idx]
+        img_tensor, labels = self.path_list[idx]
         file_name = "0"
 
         if self.aug:
@@ -38,7 +41,7 @@ class BreastData(data.Dataset):
                 )  
             img_tensor = trans(img_tensor)
         
-        return img_tensor,labels,file_name
+        return img_tensor, labels, file_name
 
     def check_files(self):
         # This part is the core code block for load your own dataset.
@@ -58,5 +61,10 @@ class BreastData(data.Dataset):
         train = ImageFolder(TRAIN_PATH, transform1)
         val = ImageFolder(VAL_PATH, transform1)
         test = ImageFolder(TEST_PATH, transform2)
-        self.path_list = train if self.train else val
-        
+
+        if self.mode == 'train':
+            self.path_list = train 
+        elif self.mode == 'val':
+            self.path_list = val
+        elif self.mode == 'test':
+            self.path_list = test

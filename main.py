@@ -25,7 +25,7 @@ args={
 
     # Training Info
     "dataset" : "breast_data",
-    "data_dir" : r"G:\我的雲端硬碟\Lab\Project\胸大肌\乳腺\BreastCNN\data\histogram_cc",
+    "data_dir" : r"C:\Data\胸大肌\data\histogram_cc",
     "class_num" : 2,
     "model_name" : "cnn_cbam",
     "loss" : "focal",
@@ -103,8 +103,8 @@ def main(args):
         accumulate_grad_batches=args["batch_accumulate"],
         auto_scale_batch_size='binsearch',
         auto_lr_find=False,
-        max_epochs=1000,       # 1000
-        min_epochs=200,       # 200
+        max_epochs=200,       # 1000
+        min_epochs=100,       # 200
         log_every_n_steps=args["batch_size"],
         gpus=1,
         precision=16,       # 32

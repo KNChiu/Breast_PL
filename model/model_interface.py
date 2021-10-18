@@ -84,6 +84,7 @@ class MInterface(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         img, labels, filename = batch
+        
         out = self(img)
         loss = self.loss_function(out, labels)
 
@@ -112,8 +113,6 @@ class MInterface(pl.LightningModule):
         self.confusion(preds.cpu(), targets.cpu(), 'val', r"log")
         
     def test_step(self, batch, batch_idx):
-        # Here we just reuse the validation_step for testing
-        # return self.validation_step(batch, batch_idx)
         img, labels, filename = batch
         out = self(img)
         loss = self.loss_function(out, labels)
@@ -148,7 +147,9 @@ class MInterface(pl.LightningModule):
         self.log('test_auc', auc, on_step=False, on_epoch=True, prog_bar=True)
         self.log('test_acc', acc, on_step=False, on_epoch=True, prog_bar=True)
 
-        self.confusion(preds.cpu(), targets.cpu(), 'val', r"log")
+        self.confusion(preds.cpu(), targets.cpu(), 'test', r"log")
+
+
 
     def configure_optimizers(self):
         if hasattr(self.hparams, 'weight_decay'):
