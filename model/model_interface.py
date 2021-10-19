@@ -183,7 +183,7 @@ class MInterface(pl.LightningModule):
         elif loss == 'bce':
             self.loss_function = F.binary_cross_entropy
         elif loss == 'focal':
-            self.loss_function = FocalLoss(self.hparams.class_num, alpha = torch.tensor([0.4, 0.6]).cuda(), gamma = 4)
+            self.loss_function = FocalLoss(self.hparams.class_num, alpha = torch.tensor([0.5, 0.5]).cuda(), gamma = 4)
         else:
             raise ValueError("Invalid Loss Type!")
 

@@ -16,16 +16,16 @@ warnings.filterwarnings("ignore")
 
 args={
     # Basic Training Control
-    "project_name" : "Breast_PL",
+    "project_name" : "Breast_PL_New",
     "batch_size" : 16,
-    "batch_accumulate" : 1,
+    "batch_accumulate" : 2,
     "num_workers" : 4,
     "seed" : 42,
     "lr" : 1e-3,
 
     # Training Info
     "dataset" : "breast_data",
-    "data_dir" : r"C:\Data\胸大肌\data\histogram_cc",
+    "data_dir" : r"C:\Data\胸大肌\data\CC(trainset)",
     "class_num" : 2,
     "model_name" : "cnn_cbam",
     "loss" : "focal",
@@ -55,8 +55,8 @@ args={
 def load_callbacks():
     callbacks = []
     callbacks.append(plc.EarlyStopping(
-        monitor='val_acc',
-        mode='max',
+        monitor='train_loss_step',
+        mode='min',
         patience=10,
         min_delta=0.001
     ))
@@ -69,9 +69,9 @@ def load_callbacks():
         save_last=True
     ))
 
-    # if args.lr_scheduler:
-    #     callbacks.append(plc.LearningRateMonitor(
-    #         logging_interval='epoch'))
+#     # if args.lr_scheduler:
+#     #     callbacks.append(plc.LearningRateMonitor(
+#     #         logging_interval='epoch'))
 
     return callbacks
 
@@ -103,11 +103,11 @@ def main(args):
         accumulate_grad_batches=args["batch_accumulate"],
         auto_scale_batch_size='binsearch',
         auto_lr_find=False,
-        max_epochs=200,       # 1000
-        min_epochs=100,       # 200
+        max_epochs=300,       # 1000
+        min_epochs=200,       # 200
         log_every_n_steps=args["batch_size"],
         gpus=1,
-        precision=16,       # 32
+        precision=32,       # 32
         logger=wandb,
         callbacks=load_callbacks()
         )
