@@ -67,10 +67,12 @@ class CnnCbam(nn.Module):
                 # nn.Dropout2d(0.2)
                 )
         
-        self.fc1 = nn.Linear(in_features = 64 * 80 * 80, out_features = 128)
-        self.fc2 = nn.Linear(in_features = 128, out_features = 32)
-        self.fc3 = nn.Linear(in_features = 32, out_features = 8)
-        self.fc4 = nn.Linear(in_features = 8, out_features = 2)
+        # self.fc1 = nn.Linear(in_features = 64 * 80 * 80, out_features = 128)
+        # self.fc2 = nn.Linear(in_features = 128, out_features = 32)
+        # self.fc3 = nn.Linear(in_features = 32, out_features = 8)
+        # self.fc4 = nn.Linear(in_features = 8, out_features = 2)
+
+
         
         self.ca1 = ChannelAttention(16)#64
         self.sa1 = SpatialAttention()
@@ -78,10 +80,11 @@ class CnnCbam(nn.Module):
         self.ca2 = ChannelAttention(32)#64
         self.sa2 = SpatialAttention()
         
-        self.ca3 = ChannelAttention(64)#64
-        self.sa3 = SpatialAttention()
+        # self.ca3 = ChannelAttention(64)#64
+        # self.sa3 = SpatialAttention()
         
         self.gap = nn.AdaptiveAvgPool2d((1, 1))
+        self.flat = nn.Flatten()
         self.fc = nn.Linear(64, 2)
 
     def forward(self, x):
@@ -98,15 +101,18 @@ class CnnCbam(nn.Module):
         # x = self.sa3(x) * x
         
         
-        # x = self.gap(x)
-        x = x.view(x.size(0), -1)#flatten
+        x = self.gap(x)
+        x = self.flat(x)
+        output = self.fc(x)
+
+        # x = x.view(x.size(0), -1)#flatten
         # output = F.softmax(self.fc(x))
         
         
-        x = self.fc1(x)
-        x = self.fc2(x)
-        x = self.fc3(x)
-        output = self.fc4(x)
+        # x = self.fc1(x)
+        # x = self.fc2(x)
+        # x = self.fc3(x)
+        # output = self.fc4(x)
         # output = F.softmax(self.fc4(x), dim=1)
         return output
 
