@@ -18,7 +18,7 @@ class BreastData(data.Dataset):
 
         # Set all input args as attributes
         self.__dict__.update(locals())
-        if (mode == "train" and not no_augment) or (mode == "val" and not no_augment):
+        if (mode == "train" and not no_augment):
             self.aug = True
         else:
             self.aug = False

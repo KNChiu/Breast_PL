@@ -17,8 +17,8 @@ warnings.filterwarnings("ignore")
 args={
     # Basic Training Control
     "project_name" : "Breast_PL_New",
-    "batch_size" : 16,
-    "batch_accumulate" : 2,
+    "batch_size" : 8,
+    "batch_accumulate" : 4,
     "num_workers" : 4,
     "seed" : 42,
     "lr" : 1e-3,
@@ -93,7 +93,7 @@ def main(args):
 
     # # If you want to change the logger's saving folder
     # logger = TensorBoardLogger(save_dir='kfold_log', name=args.log_dir)
-    wandb = WandbLogger(project=args["project_name"], log_model='all')
+    wandb = WandbLogger(project=args["project_name"], log_model='best')
     # args.callbacks = load_callbacks()
     # args.logger = logger
 
@@ -103,8 +103,8 @@ def main(args):
         accumulate_grad_batches=args["batch_accumulate"],
         auto_scale_batch_size='binsearch',
         auto_lr_find=False,
-        max_epochs=300,       # 1000
-        min_epochs=200,       # 200
+        max_epochs=1000,       # 1000
+        min_epochs=100,       # 200
         log_every_n_steps=args["batch_size"],
         gpus=1,
         precision=32,       # 32

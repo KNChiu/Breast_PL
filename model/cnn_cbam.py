@@ -2,120 +2,100 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=16):
-        super(ChannelAttention, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-
-        self.fc1   = nn.Conv2d(in_planes, in_planes // 16, 1, bias=False)
-        self.relu1 = nn.LeakyReLU()
-        self.fc2   = nn.Conv2d(in_planes // 16, in_planes, 1, bias=False)
-
-        self.sigmoid = nn.Sigmoid()
+class Residual(nn.Module):
+    def __init__(self, fn):
+        super().__init__()
+        self.fn = fn
 
     def forward(self, x):
-        avg_out = self.fc2(self.relu1(self.fc1(self.avg_pool(x))))
-        max_out = self.fc2(self.relu1(self.fc1(self.max_pool(x))))
-        out = avg_out + max_out
-        return self.sigmoid(out)
-    
-class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size=7):
-        super(SpatialAttention, self).__init__()
+        return self.fn(x) + x
 
-        assert kernel_size in (3, 7), 'kernel size must be 3 or 7'
-        padding = 3 if kernel_size == 7 else 1
+# def convmixer_layer(dim, depth, inside_dim, kernel_size = 9):
+#     return nn.Sequential(
+#         *[nn.Sequential(
+#                 Residual(nn.Sequential(
+#                     nn.Conv2d(dim, dim, kernel_size, groups=dim, padding="same"),
+#                     nn.GELU(),
+#                     nn.BatchNorm2d(dim)
+#                 )),
+#                 nn.Conv2d(dim, dim, kernel_size=1),
+#                 nn.GELU(),
+#                 nn.BatchNorm2d(dim)
+#         ) for i in range(depth)],
+#     )
 
-        self.conv1 = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)
-        self.sigmoid = nn.Sigmoid()
+def convmixer_layer(dim, depth, inside_dim, kernel_size):
+    return nn.Sequential(
+        *[nn.Sequential(
+                Residual(
+                    nn.Sequential(
+                        nn.Conv2d(in_channels = dim, out_channels = inside_dim, kernel_size = 1, stride = 1, padding = 0),
+                        nn.GELU(),
+                        # nn.LeakyReLU(),
 
-    def forward(self, x):
-        avg_out = torch.mean(x, dim=1, keepdim=True)
-        max_out, _ = torch.max(x, dim=1, keepdim=True)
-        x = torch.cat([avg_out, max_out], dim=1)
-        x = self.conv1(x)
-        return self.sigmoid(x)
+                        nn.Conv2d(in_channels = inside_dim, out_channels = inside_dim, kernel_size = kernel_size, stride = 1, padding = 1),
+                        nn.GELU(),
+                        # nn.LeakyReLU(),
+                        
+                        nn.Conv2d(in_channels = inside_dim, out_channels = dim, kernel_size = 1, stride = 1, padding = 0),
+                        nn.GELU(),
+                        # nn.LeakyReLU(),
+                        )
+                    ),
+                # nn.Conv2d(dim, dim, kernel_size=1),
+                nn.GELU(),
+                # nn.LeakyReLU(),
+                nn.BatchNorm2d(dim)
+        ) for i in range(depth)],
+    )
 
 class CnnCbam(nn.Module):
-    def __init__(self):
+    def __init__(self, dim = 768, depth = 24, inside_dim = 64, kernel_size = 3, patch_size = 16, n_classes = 2):
         super(CnnCbam, self).__init__()
-        self.conv1 = nn.Sequential(
-                nn.Conv2d(in_channels = 3, out_channels = 16, kernel_size = 7,
-                          stride = 1, padding = 3),
-                # nn.BatchNorm2d(16),
-                nn.LeakyReLU(),
-                nn.MaxPool2d(kernel_size = 2),
-                # nn.Dropout2d(0.2)
-                )
+        self.dim = dim
+        self.depth = depth
+        self.n_class = n_classes
+        self.inside_dim = inside_dim
+        self.kernel_size = kernel_size
 
-        self.conv2 = nn.Sequential(
-                nn.Conv2d(in_channels = 16, out_channels = 32, kernel_size = 5,
-                          stride = 1, padding = 2),
-                # nn.BatchNorm2d(32),
-                nn.LeakyReLU(),
-                nn.MaxPool2d(kernel_size = 2),
-                # nn.Dropout2d(0.2)
-                )
+        self.patch_embed = nn.Sequential(
+            nn.Conv2d(3, dim, kernel_size = patch_size, stride = patch_size),
+            nn.GELU(),
+            # nn.LeakyReLU(),
+            nn.BatchNorm2d(dim)
+        )
 
-        self.conv3 = nn.Sequential(
-                nn.Conv2d(in_channels = 32, out_channels = 64, kernel_size = 3,             
-                          stride = 1, padding = 1),
-                # nn.BatchNorm2d(64),
-                nn.LeakyReLU(),
-                nn.MaxPool2d(kernel_size = 2),
-                # nn.Dropout2d(0.2)
-                )
-        
-        # self.fc1 = nn.Linear(in_features = 64 * 80 * 80, out_features = 128)
-        # self.fc2 = nn.Linear(in_features = 128, out_features = 32)
-        # self.fc3 = nn.Linear(in_features = 32, out_features = 8)
-        # self.fc4 = nn.Linear(in_features = 8, out_features = 2)
+        self.cm_layer = convmixer_layer(self.dim, self.depth, self.inside_dim, self.kernel_size)
 
-
-        
-        self.ca1 = ChannelAttention(16)#64
-        self.sa1 = SpatialAttention()
-        
-        self.ca2 = ChannelAttention(32)#64
-        self.sa2 = SpatialAttention()
-        
-        # self.ca3 = ChannelAttention(64)#64
-        # self.sa3 = SpatialAttention()
-        
-        self.gap = nn.AdaptiveAvgPool2d((1, 1))
+        self.gap = nn.AdaptiveAvgPool2d((1,1))
         self.flat = nn.Flatten()
-        self.fc = nn.Linear(64, 2)
-
+        self.fc = nn.Linear(dim, n_classes)
+    
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.ca1(x) * x
-        x = self.sa1(x) * x
-        
-        x = self.conv2(x)
-        x = self.ca2(x) * x
-        x = self.sa2(x) * x
-        
-        x = self.conv3(x)
-        # x = self.ca3(x) * x
-        # x = self.sa3(x) * x
-        
-        
+        x = self.patch_embed(x)
+        x = self.cm_layer(x)
         x = self.gap(x)
         x = self.flat(x)
         output = self.fc(x)
-
-        # x = x.view(x.size(0), -1)#flatten
-        # output = F.softmax(self.fc(x))
-        
-        
-        # x = self.fc1(x)
-        # x = self.fc2(x)
-        # x = self.fc3(x)
-        # output = self.fc4(x)
-        # output = F.softmax(self.fc4(x), dim=1)
         return output
 
-# def CnnCbam(pretrain = False, **kwargs):
-#     model = CNN()
-#     return model
+if __name__ == '__main__':
+    import torch
+    import netron
+    import torch.optim as optim
+    from cnn_cbam import CnnCbam
+
+
+    # GPU
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    print('GPU State:', device)
+
+    model = CnnCbam()
+    print(model)
+
+    _input = torch.randn(1, 3, 640, 640)
+    # _input = _input.unsqueeze(0)
+    # print(_input.size())
+    onxx_path = r'G:\我的雲端硬碟\Lab\Project\胸大肌\乳腺\Breast_PL\model.onnx'
+    torch.onnx.export(model, _input, onxx_path)
+    netron.start(onxx_path)
